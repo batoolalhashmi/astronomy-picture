@@ -31,4 +31,5 @@
         <item>العربية</item>
         <item>English</item>
     </string-array>
+    <string name="back">رجوع</string>
 </resources>

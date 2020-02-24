@@ -27,6 +27,7 @@
     <string name="api_key">xGw9yHLXh2SfQH3WbLbCeSGlvEVUI6w0QSkHDl9h</string>
     <string name="no_data">no data found to download</string>
     <string name="change_lang_text">change language</string>
+    <string name="back">Back</string>
 
     <string-array name="languages">
         <item>العربية</item>

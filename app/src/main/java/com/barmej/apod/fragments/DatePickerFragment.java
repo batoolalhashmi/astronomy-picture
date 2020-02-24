@@ -16,7 +16,6 @@ import java.util.Locale;
 
 public class DatePickerFragment extends DialogFragment
         implements DatePickerDialog.OnDateSetListener {
-    private final String TAG = DatePickerFragment.class.getSimpleName();
 
     public interface OnDateChangeListener {
         void onDateChange(String data);

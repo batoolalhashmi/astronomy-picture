@@ -18,6 +18,7 @@ public class NASADataParser {
     private static final String TITLE = "title";
     private static final String URL = "url";
     private static final String NASA_MESSAGE_CODE = "code";
+    private static final String MEDIA_TYPE = "media_type";
 
     private static boolean isError(JSONObject jsonObject) {
         if (jsonObject == null) {
@@ -51,6 +52,7 @@ public class NASADataParser {
         astronomyInfo.setUrl(astronomyJson.getString(URL));
         astronomyInfo.setDate(astronomyJson.getString(DATE));
         astronomyInfo.setExplanation(astronomyJson.getString(EXPLAN));
+        astronomyInfo.setMediaType(astronomyJson.getString(MEDIA_TYPE));
 
         if (astronomyJson.has(HDURL)) {
             astronomyInfo.setHdurl(astronomyJson.getString(HDURL));

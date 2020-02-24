@@ -2,18 +2,20 @@ package com.barmej.apod;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.Manifest;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -34,9 +36,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity implements DatePickerFragment.OnDateChangeListener {
-    private static final String TAG = "MainActivity";
-    private FragmentManager mFragmentManager;
-    final MainFragment mainFragment = new MainFragment();
+    private static final String SAVED_FRAGMENT = "fragment";
+    private static final int HDURL_WRITE_PERMISSION = 130;
+    private MainFragment mainFragment;
     final AboutFragment aboutFragment = new AboutFragment();
     final DialogFragment datePickerFragment = new DatePickerFragment();
     private NetworkUtils mNetworkUtils;
@@ -46,12 +48,21 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         mNetworkUtils = NetworkUtils.getInstance(this);
-        onMainFragmentStart();
-        requestAstronomyInfo(null);
+        if (savedInstanceState == null) {
+            mainFragment = new MainFragment();
+            FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+            fragmentTransaction.replace(R.id.main_layout, mainFragment, SAVED_FRAGMENT).commit();
+            requestAstronomyInfo(null);
+        } else {
+            mainFragment = (MainFragment) getSupportFragmentManager().findFragmentByTag(SAVED_FRAGMENT);
+        }
+
     }
 
     private void requestAstronomyInfo(final String date) {
+        System.out.println("REQUEST");
         String astronomyRequestUrl = NetworkUtils.getAstronomyViewUrl(MainActivity.this, date).toString();
         JsonObjectRequest astronomyRequest = new JsonObjectRequest(
                 Request.Method.GET,
@@ -66,7 +77,6 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
                             e.printStackTrace();
                         }
                         if (mAstronomyInfo != null) {
-                            Toast.makeText(MainActivity.this, "Request Operation Completed!", Toast.LENGTH_SHORT).show();
                             mainFragment.updateAstronomyInfo(mAstronomyInfo);
                         } else {
                             Toast.makeText(MainActivity.this, "error happened", Toast.LENGTH_SHORT).show();
@@ -77,8 +87,7 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
             public void onErrorResponse(VolleyError error) {
                 Toast.makeText(MainActivity.this, error.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        }
-        );
+        });
         mNetworkUtils.addToRequestQueue(astronomyRequest);
     }
 
@@ -93,12 +102,13 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
         if (mAstronomyInfo != null) {
             String hdurl = mAstronomyInfo.getHdurl();
             MenuItem downloadItem = menu.findItem(R.id.action_download_hd);
-            Log.d(TAG, "onCreateOptionsMenu: " + hdurl);
             if (hdurl != null) {
                 downloadItem.setVisible(true);
             } else {
                 downloadItem.setVisible(false);
             }
+        } else {
+            System.out.println("NULL");
         }
         return super.onPrepareOptionsMenu(menu);
     }
@@ -106,17 +116,17 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        mFragmentManager = getSupportFragmentManager();
+        FragmentManager mFragmentManager = getSupportFragmentManager();
         FragmentTransaction fragmentTransaction = mFragmentManager.beginTransaction();
         if (id == R.id.action_about) {
-            fragmentTransaction.replace(R.id.main_layout, aboutFragment);
+            fragmentTransaction.replace(R.id.main_layout, aboutFragment, null).addToBackStack(null);
         } else if (id == R.id.action_download_hd) {
             startDownloadHd();
         } else if (id == R.id.action_share) {
             onSharedClicked();
-        } else if (id == R.id.action_pick_day){
+        } else if (id == R.id.action_pick_day) {
             datePickerFragment.show(getSupportFragmentManager(), "datePicker");
-        }else {
+        } else {
             showLanguageDialog();
         }
         fragmentTransaction.commit();
@@ -124,17 +134,23 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
     }
 
     private void startDownloadHd() {
-        String hdurl = mAstronomyInfo.getHdurl();
-        String title = mAstronomyInfo.getTitle();
-        Log.d(TAG, "startDownloadHd: hdurl" + hdurl);
-        Uri uri = Uri.parse(hdurl);
-        DownloadManager downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-        DownloadManager.Request request = new DownloadManager.Request(uri);
-        request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
-        request.setAllowedOverRoaming(false);
-        request.setTitle(title);
-        request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, title + ".jpg");
-        downloadManager.enqueue(request);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, HDURL_WRITE_PERMISSION);
+        } else {
+            String hdurl = mAstronomyInfo.getHdurl();
+            String title = mAstronomyInfo.getTitle();
+            Uri uri = Uri.parse(hdurl);
+            DownloadManager downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            DownloadManager.Request request = new DownloadManager.Request(uri);
+            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
+            request.setAllowedOverRoaming(false);
+            request.setTitle(title);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, title + ".jpg");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            downloadManager.enqueue(request);
+        }
     }
 
     private void onSharedClicked() {
@@ -148,18 +164,11 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
 
     @Override
     public void onDateChange(String date) {
-        Log.d(TAG, "onDateSet: " + date);
-        requestAstronomyInfo(date);
-        onMainFragmentStart();
         mainFragment.onProgressBarVisible();
+        requestAstronomyInfo(date);
+        mainFragment.updateAstronomyInfo(mAstronomyInfo);
     }
 
-    private void onMainFragmentStart() {
-        mFragmentManager = getSupportFragmentManager();
-        FragmentTransaction fragmentTransaction = mFragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.main_layout, mainFragment);
-        fragmentTransaction.commit();
-    }
     private void showLanguageDialog() {
         AlertDialog alertDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.change_lang_text)
@@ -176,12 +185,10 @@ public class MainActivity extends AppCompatActivity implements DatePickerFragmen
                                 break;
                         }
                         LocaleHelper.setLocale(MainActivity.this, language);
-                        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
+                        recreate();
                     }
                 }).create();
         alertDialog.show();
     }
+
 }

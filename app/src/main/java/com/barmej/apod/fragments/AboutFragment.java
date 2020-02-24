@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment;
 
 import com.barmej.apod.R;
 
+
 public class AboutFragment extends Fragment {
     private TextView mAboutTitleTextView;
     private TextView mAboutTextView;
@@ -32,13 +33,10 @@ public class AboutFragment extends Fragment {
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-
         View mainView = getView();
-
         mAboutTitleTextView = mainView.findViewById(R.id.txt_about_title);
         mAboutTextView = mainView.findViewById(R.id.txt_about);
         mNasaImage = mainView.findViewById(R.id.nasa_image);
-
         showAboutInfo();
     }
 
